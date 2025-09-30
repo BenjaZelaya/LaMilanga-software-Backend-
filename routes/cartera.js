@@ -1,34 +1,44 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
-
 const router = express.Router();
-
-const facturasPath = path.join(__dirname, "../data/facturas.json");
-const gastosPath = path.join(__dirname, "../data/gastos.json");
+const Factura = require("../models/Factura");
+const Gasto = require("../models/Gasto");
 
 // 📌 Obtener resumen de cartera
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const facturasData = fs.readFileSync(facturasPath, "utf8");
-    const gastosData = fs.readFileSync(gastosPath, "utf8");
+    console.log("🔍 Calculando resumen de cartera desde MongoDB...");
 
-    const facturas = JSON.parse(facturasData || "[]");
-    const gastos = JSON.parse(gastosData || "[]");
+    // Sumar totales de facturas (ingresos)
+    const facturas = await Factura.find().sort({ id: -1 });
+    const ingresos = facturas.reduce((sum, f) => sum + (f.total || 0), 0);
 
-    const ingresos = facturas.reduce((acc, f) => acc + Number(f.total || 0), 0);
-    const egresos = gastos.reduce((acc, g) => acc + Number(g.monto || 0), 0);
+    // Sumar totales de gastos (egresos)
+    const gastos = await Gasto.find().sort({ id: -1 });
+    const egresos = gastos.reduce((sum, g) => sum + (g.monto || 0), 0);
+
+    // Calcular saldo
     const saldo = ingresos - egresos;
 
-    res.json({
+    // Calcular total de transferencias
+    const totalTransferencias = facturas
+      .filter((f) => f.metodoPago === "Transferencia")
+      .reduce((sum, f) => sum + (f.total || 0), 0);
+
+    // Preparar respuesta
+    const resumen = {
       ingresos,
       egresos,
       saldo,
+      totalTransferencias, // Nuevo campo
       facturas,
       gastos,
-    });
+    };
+
+    console.log("📊 Resumen calculado:", resumen);
+    res.json(resumen);
   } catch (err) {
-    res.status(500).json({ error: "Error al calcular cartera" });
+    console.error("❌ Error al calcular resumen de cartera:", err.stack);
+    res.status(500).json({ error: "Error al calcular cartera", details: err.message });
   }
 });
 

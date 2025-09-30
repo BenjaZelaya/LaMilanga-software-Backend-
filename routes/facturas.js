@@ -19,17 +19,17 @@ router.get("/", async (req, res) => {
 // 📌 Crear factura
 router.post("/", async (req, res) => {
   try {
-    console.log("📥 Body recibido:", req.body); // Log para depurar
+    console.log("📥 Body recibido:", req.body);
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({ error: "El cuerpo de la solicitud está vacío" });
     }
 
-    const { cliente, turno, productos, total } = req.body;
+    const { cliente, turno, productos, total, metodoPago } = req.body;
 
-    if (!cliente || !turno || !productos || productos.length === 0 || !total) {
+    if (!cliente || !turno || !productos || productos.length === 0 || !total || !metodoPago) {
       return res
         .status(400)
-        .json({ error: "Cliente, turno, productos y total son obligatorios" });
+        .json({ error: "Cliente, turno, productos, total y método de pago son obligatorios" });
     }
 
     const now = new Date();
@@ -53,6 +53,7 @@ router.post("/", async (req, res) => {
       total: Number(total),
       fecha: fechaISO,
       hora,
+      metodoPago, // Guardamos el método de pago
     });
 
     await nuevaFactura.save();
