@@ -1,40 +1,37 @@
 const express = require("express");
-const fs = require("fs").promises;
-const path = require("path");
-
 const router = express.Router();
-const filePath = path.join(__dirname, "../data/facturas.json");
+const Factura = require("../models/Factura");
 
 // 📌 Obtener todas las facturas
 router.get("/", async (req, res) => {
   try {
-    const data = await fs.readFile(filePath, "utf8");
-    const facturas = JSON.parse(data || "[]");
+    console.log("🔍 Consultando facturas en MongoDB...");
+    const facturas = await Factura.find().sort({ _id: -1 });
+    console.log("📊 Facturas encontradas:", facturas.length);
+    if (facturas.length === 0) console.log("⚠️ No se encontraron facturas en la base de datos.");
     res.json(facturas);
   } catch (err) {
-    console.error("Error al leer facturas:", err);
-    res.status(500).json({ error: "Error al leer facturas" });
+    console.error("❌ Error al leer facturas:", err.stack);
+    res.status(500).json({ error: "Error al leer facturas", details: err.message });
   }
 });
 
 // 📌 Crear factura
 router.post("/", async (req, res) => {
   try {
+    console.log("📥 Body recibido:", req.body); // Log para depurar
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: "El cuerpo de la solicitud está vacío" });
+    }
+
     const { cliente, turno, productos, total } = req.body;
 
     if (!cliente || !turno || !productos || productos.length === 0 || !total) {
-      return res.status(400).json({ error: "Cliente, turno, productos y total son obligatorios" });
+      return res
+        .status(400)
+        .json({ error: "Cliente, turno, productos y total son obligatorios" });
     }
 
-    let facturas = [];
-    try {
-      const data = await fs.readFile(filePath, "utf8");
-      facturas = JSON.parse(data || "[]");
-    } catch (err) {
-      // Si el archivo no existe, inicializa un array vacío
-    }
-
-    // 🔄 Fecha en formato ISO (yyyy-mm-dd)
     const now = new Date();
     const fechaISO = now.toISOString().split("T")[0];
     const hora = now.toLocaleTimeString([], {
@@ -43,23 +40,28 @@ router.post("/", async (req, res) => {
       hour12: true,
     });
 
-    const nuevaFactura = {
-      id: facturas.length > 0 ? facturas[facturas.length - 1].id + 1 : 1,
+    console.log("🔍 Buscando última factura para ID...");
+    const lastFactura = await Factura.findOne().sort({ id: -1 });
+    const newId = lastFactura ? lastFactura.id + 1 : 1;
+    console.log("🆕 Nuevo ID calculado:", newId);
+
+    const nuevaFactura = new Factura({
+      id: newId,
       cliente,
       turno,
       productos,
       total: Number(total),
       fecha: fechaISO,
       hora,
-    };
+    });
 
-    facturas.push(nuevaFactura);
-    await fs.writeFile(filePath, JSON.stringify(facturas, null, 2));
-
+    await nuevaFactura.save();
+    console.log("💾 Factura guardada exitosamente:", nuevaFactura.id);
+    console.log("📄 Detalles guardados:", nuevaFactura);
     res.status(201).json({ message: "Factura guardada", factura: nuevaFactura });
   } catch (err) {
-    console.error("Error al guardar factura:", err);
-    res.status(500).json({ error: "Error al guardar factura" });
+    console.error("❌ Error al guardar factura:", err.stack);
+    res.status(500).json({ error: "Error al guardar factura", details: err.message });
   }
 });
 
@@ -67,22 +69,19 @@ router.post("/", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    console.log("🗑️ Intentando eliminar factura con ID:", id);
+    const result = await Factura.findOneAndDelete({ id });
 
-    const data = await fs.readFile(filePath, "utf8");
-    let facturas = JSON.parse(data || "[]");
-
-    const index = facturas.findIndex((f) => f.id === id);
-    if (index === -1) {
+    if (!result) {
+      console.log("⚠️ Factura no encontrada con ID:", id);
       return res.status(404).json({ error: "Factura no encontrada" });
     }
 
-    facturas.splice(index, 1);
-    await fs.writeFile(filePath, JSON.stringify(facturas, null, 2));
-
+    console.log("✅ Factura eliminada con ID:", id);
     res.json({ message: "Factura eliminada correctamente" });
   } catch (err) {
-    console.error("Error al eliminar factura:", err);
-    res.status(500).json({ error: "Error al eliminar factura" });
+    console.error("❌ Error al eliminar factura:", err.stack);
+    res.status(500).json({ error: "Error al eliminar factura", details: err.message });
   }
 });
 
