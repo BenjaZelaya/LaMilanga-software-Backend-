@@ -1,23 +1,24 @@
 const express = require("express");
-const fs = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
 
 const router = express.Router();
 const filePath = path.join(__dirname, "../data/facturas.json");
 
 // 📌 Obtener todas las facturas
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const data = fs.readFileSync(filePath, "utf8");
+    const data = await fs.readFile(filePath, "utf8");
     const facturas = JSON.parse(data || "[]");
     res.json(facturas);
   } catch (err) {
+    console.error("Error al leer facturas:", err);
     res.status(500).json({ error: "Error al leer facturas" });
   }
 });
 
 // 📌 Crear factura
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { cliente, turno, productos, total } = req.body;
 
@@ -25,8 +26,13 @@ router.post("/", (req, res) => {
       return res.status(400).json({ error: "Cliente, turno, productos y total son obligatorios" });
     }
 
-    const data = fs.readFileSync(filePath, "utf8");
-    let facturas = JSON.parse(data || "[]");
+    let facturas = [];
+    try {
+      const data = await fs.readFile(filePath, "utf8");
+      facturas = JSON.parse(data || "[]");
+    } catch (err) {
+      // Si el archivo no existe, inicializa un array vacío
+    }
 
     // 🔄 Fecha en formato ISO (yyyy-mm-dd)
     const now = new Date();
@@ -43,25 +49,26 @@ router.post("/", (req, res) => {
       turno,
       productos,
       total: Number(total),
-      fecha: fechaISO, // Formato ISO compatible con <input type="date">
+      fecha: fechaISO,
       hora,
     };
 
     facturas.push(nuevaFactura);
-    fs.writeFileSync(filePath, JSON.stringify(facturas, null, 2));
+    await fs.writeFile(filePath, JSON.stringify(facturas, null, 2));
 
     res.status(201).json({ message: "Factura guardada", factura: nuevaFactura });
   } catch (err) {
+    console.error("Error al guardar factura:", err);
     res.status(500).json({ error: "Error al guardar factura" });
   }
 });
 
 // 📌 Eliminar factura
-router.delete("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
 
-    const data = fs.readFileSync(filePath, "utf8");
+    const data = await fs.readFile(filePath, "utf8");
     let facturas = JSON.parse(data || "[]");
 
     const index = facturas.findIndex((f) => f.id === id);
@@ -70,10 +77,11 @@ router.delete("/:id", (req, res) => {
     }
 
     facturas.splice(index, 1);
-    fs.writeFileSync(filePath, JSON.stringify(facturas, null, 2));
+    await fs.writeFile(filePath, JSON.stringify(facturas, null, 2));
 
     res.json({ message: "Factura eliminada correctamente" });
   } catch (err) {
+    console.error("Error al eliminar factura:", err);
     res.status(500).json({ error: "Error al eliminar factura" });
   }
 });

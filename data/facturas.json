@@ -122,5 +122,21 @@
     "total": 10000,
     "fecha": "2025-09-29",
     "hora": "03:56 p. m."
+  },
+  {
+    "id": 9,
+    "cliente": "Luis",
+    "turno": "Mañana",
+    "productos": [
+      {
+        "nombre": "Lomito",
+        "cantidad": 1,
+        "precio": 10000,
+        "subtotal": 10000
+      }
+    ],
+    "total": 10000,
+    "fecha": "2025-09-30",
+    "hora": "09:24 p. m."
   }
 ]
