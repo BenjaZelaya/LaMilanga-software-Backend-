@@ -37,7 +37,7 @@ mongoose.connect(process.env.MONGO_URI, {
   .catch((err) => {
     console.error("❌ Error al conectar a MongoDB:", err.message);
     console.error("Detalles del error:", err.stack);
-    process.exit(1);
+    process.exit(1); // Termina el proceso si no se conecta
   });
 
 // Manejo de eventos de reconexión
@@ -63,5 +63,5 @@ app.use("/productos", productosRoutes);
 // Manejo de errores global
 app.use((err, req, res, next) => {
   console.error("Error global:", err.stack);
-  res.status(500).json({ error: "Error interno del servidor" });
+  res.status(500).json({ error: "Error interno del servidor", details: err.message });
 });
