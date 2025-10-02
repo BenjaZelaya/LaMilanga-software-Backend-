@@ -10,6 +10,7 @@ router.get("/", async (req, res) => {
 
     // Sumar totales de facturas (ingresos)
     const facturas = await Factura.find().sort({ id: -1 });
+    console.log("📋 Facturas encontradas:", facturas); // Depuración
     const ingresos = facturas.reduce((sum, f) => sum + (f.total || 0), 0);
 
     // Sumar totales de gastos (egresos)
@@ -24,17 +25,23 @@ router.get("/", async (req, res) => {
       .filter((f) => f.metodoPago === "Transferencia")
       .reduce((sum, f) => sum + (f.total || 0), 0);
 
+    // Calcular total de efectivo
+    const totalEfectivo = facturas
+      .filter((f) => f.metodoPago === "Efectivo")
+      .reduce((sum, f) => sum + (f.total || 0), 0);
+
     // Preparar respuesta
     const resumen = {
       ingresos,
       egresos,
       saldo,
-      totalTransferencias, // Nuevo campo
+      totalTransferencias,
+      totalEfectivo,
       facturas,
       gastos,
     };
 
-    console.log("📊 Resumen calculado:", resumen);
+    console.log("📊 Resumen calculado:", resumen); // Depuración
     res.json(resumen);
   } catch (err) {
     console.error("❌ Error al calcular resumen de cartera:", err.stack);
