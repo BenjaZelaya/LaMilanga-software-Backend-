@@ -34,4 +34,23 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Eliminar un producto
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Intentando eliminar producto con ID:", id); // Depuración
+    const productoEliminado = await Producto.findByIdAndDelete(id);
+
+    if (!productoEliminado) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    console.log("Producto eliminado:", productoEliminado); // Depuración
+    res.json({ message: "Producto eliminado correctamente" });
+  } catch (err) {
+    console.error("Error al eliminar producto:", err); // Depuración
+    res.status(500).json({ message: "Error al eliminar el producto" });
+  }
+});
+
 module.exports = router;
